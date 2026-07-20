@@ -65,6 +65,7 @@ object ScriptStore {
         {
           "action": "click",
           "target": "Play",
+          "target_class": "android.widget.Image",
           "fallback_target": "Shuffle",
           "fallback_id": "fab_play",
           "timeout": 20000,
