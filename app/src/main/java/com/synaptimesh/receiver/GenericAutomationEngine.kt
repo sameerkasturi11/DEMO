@@ -279,10 +279,22 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
                                 val node = pollForNode({ isNodeMatch(it, target, targetId, fallbackTarget, fallbackId, targetClass, isEditable, targetDesc) }, timeout)
                                 
                                 if (node != null) {
-                                    clickNode(node)
-                                    success = true
+                                    val nText = node.text?.toString() ?: "null"
+                                    val nDesc = node.contentDescription?.toString() ?: "null"
+                                    val nClass = node.className?.toString() ?: "null"
+                                    val nId = node.viewIdResourceName ?: "null"
+                                    
+                                    val clicked = clickNode(node)
+                                    success = clicked
+                                    
+                                    if (clicked) {
+                                        MainActivity.appendLog("[AUTO] Clicked node [text=$nText, desc=$nDesc, class=$nClass, id=$nId]")
+                                    } else {
+                                        errorMsg = "Node found but NOT clickable [text=$nText, desc=$nDesc, class=$nClass, id=$nId]"
+                                        MainActivity.appendLog("[AUTO] $errorMsg")
+                                    }
                                 } else {
-                                    errorMsg = "Node not found for targets [${target}, ${targetId}, ${fallbackTarget}, ${fallbackId}]"
+                                    errorMsg = "Node not found for targets [target=$target, target_desc=$targetDesc, id=$targetId, fallbacks=...]"
                                     MainActivity.appendLog("[AUTO] Dumping tree because click failed:")
                                     dumpTree(service.rootInActiveWindow)
                                 }
