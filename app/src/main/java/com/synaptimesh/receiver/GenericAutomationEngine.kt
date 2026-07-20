@@ -37,7 +37,7 @@ object ScriptStore {
           "target": "Music",
           "timeout": 5000,
           "retry": 1,
-          "on_failure": "abort"
+          "on_failure": "ignore"
         },
         {
           "action": "focus",
@@ -57,6 +57,13 @@ object ScriptStore {
           "action": "trigger_search",
           "playlist": "${'$'}{playlist}",
           "timeout": 8000,
+          "retry": 1,
+          "on_failure": "abort"
+        },
+        {
+          "action": "click",
+          "target": "${'$'}{playlist}",
+          "timeout": 5000,
           "retry": 1,
           "on_failure": "abort"
         },
