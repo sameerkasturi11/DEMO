@@ -56,6 +56,7 @@ object ScriptStore {
         {
           "action": "click",
           "target": "${'$'}{playlist}",
+          "fallback_target": "${'$'}{playlist_first_word}",
           "is_editable": false,
           "timeout": 5000,
           "retry": 1,
