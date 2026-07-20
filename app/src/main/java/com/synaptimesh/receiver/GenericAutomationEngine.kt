@@ -55,7 +55,7 @@ object ScriptStore {
         },
         {
           "action": "click",
-          "target": "${'$'}{playlist}",
+          "target": "${'$'}{playlist_target}",
           "fallback_target": "${'$'}{playlist_first_word}",
           "is_editable": false,
           "timeout": 5000,
@@ -217,6 +217,13 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
             // Default variable fallbacks
             if (!parameters.containsKey("playlist")) parameters["playlist"] = "Sai Abhiyankar Telugu Songs"
             parameters["playlist_first_word"] = parameters["playlist"]!!.split(" ").firstOrNull() ?: parameters["playlist"]!!
+            
+            // Map demo inputs to actual on-screen text
+            if (parameters["playlist"] == "Anirudh Telugu Hits") {
+                parameters["playlist_target"] = "Let's Play - Anirudh Ravichander"
+            } else {
+                parameters["playlist_target"] = parameters["playlist"]!!
+            }
             
             var lastFocusedNode: AccessibilityNodeInfo? = null
 
