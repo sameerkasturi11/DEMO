@@ -58,7 +58,7 @@ object ScriptStore {
           "playlist": "${'$'}{playlist}",
           "timeout": 8000,
           "retry": 1,
-          "on_failure": "abort"
+          "on_failure": "ignore"
         },
         {
           "action": "click",
@@ -96,7 +96,7 @@ object ScriptStore {
           "action": "app_home_loop",
           "home_text": "Home",
           "home_id": "bottom_nav_home",
-          "max_backs": 4,
+          "max_backs": 8,
           "timeout": 2000,
           "retry": 0,
           "on_failure": "abort"
