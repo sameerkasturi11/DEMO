@@ -54,13 +54,6 @@ object ScriptStore {
           "on_failure": "abort"
         },
         {
-          "action": "trigger_search",
-          "playlist": "${'$'}{playlist}",
-          "timeout": 8000,
-          "retry": 1,
-          "on_failure": "ignore"
-        },
-        {
           "action": "click",
           "target": "${'$'}{playlist}",
           "timeout": 5000,
