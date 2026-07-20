@@ -349,9 +349,15 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
                                             MainActivity.appendLog("[AUTO] Found search suggestion. Clicking it...")
                                             success = clickNode(suggestion)
                                         } else {
-                                            // 3. Fallback click on EditText
-                                            MainActivity.appendLog("[AUTO] Triggering fallback click on focused field...")
-                                            success = lastFocusedNode?.performAction(AccessibilityNodeInfo.ACTION_CLICK) ?: false
+                                            // 3. Fallback search via IME
+                                            MainActivity.appendLog("[AUTO] Triggering fallback search via IME on focused field...")
+                                            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                                                val imeAction = android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER
+                                                success = lastFocusedNode?.performAction(imeAction.id) ?: false
+                                            }
+                                            if (!success) {
+                                                success = lastFocusedNode?.performAction(AccessibilityNodeInfo.ACTION_CLICK) ?: false
+                                            }
                                         }
                                     }
                                 }
