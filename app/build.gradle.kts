@@ -11,8 +11,8 @@ android {
         applicationId = "com.synaptimesh.receiver"
         minSdk = 24
         targetSdk = 34
-        versionCode = 52
-        versionName = "52"
+        versionCode = 53
+        versionName = "53"
     }
 
     buildFeatures {
