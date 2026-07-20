@@ -64,11 +64,10 @@ object ScriptStore {
         },
         {
           "action": "click",
-          "target": "Play",
-          "target_class": "android.widget.Image",
+          "target_desc": "Play",
           "fallback_target": "Shuffle",
           "fallback_id": "fab_play",
-          "timeout": 20000,
+          "timeout": 5000,
           "retry": 1,
           "on_failure": "abort"
         },
@@ -126,7 +125,8 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
         fallbackTarget: String = "",
         fallbackId: String = "",
         targetClass: String = "",
-        isEditable: Boolean? = null
+        isEditable: Boolean? = null,
+        targetDesc: String = ""
     ): Boolean {
         val t = it.text?.toString() ?: ""
         val c = it.contentDescription?.toString() ?: ""
@@ -136,9 +136,10 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
         val idMatch = targetId.isNotEmpty() && it.viewIdResourceName?.contains(targetId, true) == true
         val fallbackTextMatch = fallbackTarget.isNotEmpty() && (t.contains(fallbackTarget, true) || c.contains(fallbackTarget, true) || h.contains(fallbackTarget, true))
         val fallbackIdMatch = fallbackId.isNotEmpty() && it.viewIdResourceName?.contains(fallbackId, true) == true
+        val descMatch = targetDesc.isNotEmpty() && c.contains(targetDesc, true)
         
-        val hasBaseTarget = target.isNotEmpty() || targetId.isNotEmpty() || fallbackTarget.isNotEmpty() || fallbackId.isNotEmpty()
-        val baseMatch = if (hasBaseTarget) (textMatch || idMatch || fallbackTextMatch || fallbackIdMatch) else true
+        val hasBaseTarget = target.isNotEmpty() || targetId.isNotEmpty() || fallbackTarget.isNotEmpty() || fallbackId.isNotEmpty() || targetDesc.isNotEmpty()
+        val baseMatch = if (hasBaseTarget) (textMatch || idMatch || fallbackTextMatch || fallbackIdMatch || descMatch) else true
         
         val classMatch = if (targetClass.isNotEmpty()) it.className?.toString()?.contains(targetClass, true) == true else true
         val editableMatch = if (isEditable != null) (it.isEditable == isEditable) else true
@@ -269,12 +270,13 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
                                 parameters.forEach { (k, v) -> target = target.replace("$" + "{${k}}", v) }
                                 
                                 val targetId = step.optString("target_id", "")
+                                val targetDesc = step.optString("target_desc", "")
                                 val fallbackTarget = step.optString("fallback_target", "")
                                 val fallbackId = step.optString("fallback_id", "")
                                 val targetClass = step.optString("target_class", "")
                                 val isEditable = if (step.has("is_editable")) step.getBoolean("is_editable") else null
                                 
-                                val node = pollForNode({ isNodeMatch(it, target, targetId, fallbackTarget, fallbackId, targetClass, isEditable) }, timeout)
+                                val node = pollForNode({ isNodeMatch(it, target, targetId, fallbackTarget, fallbackId, targetClass, isEditable, targetDesc) }, timeout)
                                 
                                 if (node != null) {
                                     clickNode(node)
@@ -288,12 +290,13 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
                             "focus" -> {
                                 val target = step.optString("target", "")
                                 val targetId = step.optString("target_id", "")
+                                val targetDesc = step.optString("target_desc", "")
                                 val fallbackTarget = step.optString("fallback_target", "")
                                 val fallbackId = step.optString("fallback_id", "")
                                 val targetClass = step.optString("target_class", "")
                                 val isEditable = if (step.has("is_editable")) step.getBoolean("is_editable") else null
                                 
-                                val node = pollForNode({ isNodeMatch(it, target, targetId, fallbackTarget, fallbackId, targetClass, isEditable) }, timeout)
+                                val node = pollForNode({ isNodeMatch(it, target, targetId, fallbackTarget, fallbackId, targetClass, isEditable, targetDesc) }, timeout)
                                 if (node != null) {
                                     success = node.performAction(AccessibilityNodeInfo.ACTION_FOCUS) || clickNode(node)
                                     lastFocusedNode = node
