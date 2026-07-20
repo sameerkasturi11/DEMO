@@ -176,11 +176,18 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
 
     private fun clickNode(node: AccessibilityNodeInfo): Boolean {
         var current: AccessibilityNodeInfo? = node
+        var depth = 0
         while (current != null) {
             if (current.isClickable) {
+                if (depth > 0) {
+                    val pClass = current.className?.toString() ?: "null"
+                    val pId = current.viewIdResourceName ?: "null"
+                    MainActivity.appendLog("[AUTO] Original node not clickable. Walked up $depth levels and clicked parent [class=$pClass, id=$pId]")
+                }
                 return current.performAction(AccessibilityNodeInfo.ACTION_CLICK)
             }
             current = current.parent
+            depth++
         }
         return false
     }
