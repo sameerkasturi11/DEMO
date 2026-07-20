@@ -452,8 +452,7 @@ class MainActivity : AppCompatActivity() {
                             }
                             lastCommand = standardizedCmd
                             
-                            val request = CommandRequest(standardizedCmd, messageId, confidence, sentTimeMs, protocolVersion, dynamicPayload)
-                            CommandQueue.push(request)
+
 
                             // Mapping action string to standard BCI name
                             val action = when (standardizedCmd) {
