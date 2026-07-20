@@ -56,6 +56,7 @@ object ScriptStore {
         {
           "action": "click",
           "target": "${'$'}{playlist}",
+          "is_editable": false,
           "timeout": 5000,
           "retry": 1,
           "on_failure": "abort"
@@ -262,8 +263,9 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
                                 val fallbackTarget = step.optString("fallback_target", "")
                                 val fallbackId = step.optString("fallback_id", "")
                                 val targetClass = step.optString("target_class", "")
+                                val isEditable = if (step.has("is_editable")) step.getBoolean("is_editable") else null
                                 
-                                val node = pollForNode({ isNodeMatch(it, target, targetId, fallbackTarget, fallbackId, targetClass) }, timeout)
+                                val node = pollForNode({ isNodeMatch(it, target, targetId, fallbackTarget, fallbackId, targetClass, isEditable) }, timeout)
                                 
                                 if (node != null) {
                                     clickNode(node)
