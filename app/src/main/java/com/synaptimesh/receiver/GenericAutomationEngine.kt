@@ -70,9 +70,9 @@ object ScriptStore {
         {
           "action": "click",
           "target": "Play",
-          "fallback_target": "Play All",
+          "fallback_target": "Shuffle",
           "fallback_id": "fab_play",
-          "timeout": 8000,
+          "timeout": 20000,
           "retry": 1,
           "on_failure": "abort"
         },
