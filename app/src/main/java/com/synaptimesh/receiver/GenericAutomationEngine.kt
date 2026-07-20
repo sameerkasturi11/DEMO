@@ -74,7 +74,7 @@ object ScriptStore {
           "state": "PLAYING",
           "timeout": 5000,
           "retry": 0,
-          "on_failure": "continue"
+          "on_failure": "abort"
         }
       ]
     }
@@ -86,13 +86,10 @@ object ScriptStore {
       "version": "1.0",
       "steps": [
         {
-          "action": "app_home_loop",
-          "home_text": "Home",
-          "home_id": "bottom_nav_home",
-          "max_backs": 8,
+          "action": "global_home",
           "timeout": 2000,
           "retry": 0,
-          "on_failure": "abort"
+          "on_failure": "continue"
         }
       ]
     }
@@ -389,6 +386,7 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
                                 if (!success) errorMsg = "GLOBAL_ACTION_HOME failed"
                                 delay(500)
                             }
+
                             "app_home_loop" -> {
                                 val maxBacks = step.optInt("max_backs", 4)
                                 val appPackage = service.rootInActiveWindow?.packageName?.toString()
