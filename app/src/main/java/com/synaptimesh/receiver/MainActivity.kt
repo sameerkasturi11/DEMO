@@ -95,7 +95,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private lateinit var txtStatus: TextView
     private lateinit var txtCommand: TextView
     private lateinit var txtAction: TextView
     private lateinit var txtConfidence: TextView
@@ -267,10 +266,7 @@ class MainActivity : AppCompatActivity() {
         val btnStop = findViewById<Button>(R.id.btnStop)
 
         btnStart.setOnClickListener {
-            runOnUiThread {
-                txtStatus.text = "Status : CONNECTING..."
-                txtStatus.setTextColor(Color.YELLOW)
-            }
+
             startDiscovery()
         }
 
@@ -342,11 +338,6 @@ class MainActivity : AppCompatActivity() {
                         try {
                             val payload = message.toString()
                             
-                            // Log change status
-                            runOnUiThread {
-                                txtStatus.text = "MQTT MESSAGE RECEIVED"
-                                txtStatus.setTextColor(Color.GREEN)
-                            }
 
                             val json = JSONObject(payload)
                             val command = json.optString("command", "UNKNOWN")
