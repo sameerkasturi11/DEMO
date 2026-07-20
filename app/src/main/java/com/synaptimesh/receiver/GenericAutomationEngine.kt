@@ -72,7 +72,7 @@ object ScriptStore {
         {
           "action": "verify_media",
           "state": "PLAYING",
-          "timeout": 2000,
+          "timeout": 5000,
           "retry": 0,
           "on_failure": "continue"
         }
