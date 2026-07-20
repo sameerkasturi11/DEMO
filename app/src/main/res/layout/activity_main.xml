@@ -139,7 +139,7 @@
                     android:id="@+id/txtSysInfo"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Version : v45\nProtocol : 2\nBroker : MQTT\nAutomation : Ready"
+                    android:text="Version : v48\nProtocol : 2\nBroker : MQTT\nAutomation : Ready"
                     android:textColor="#FFFFFF"
                     android:textSize="14sp" />
             </LinearLayout>

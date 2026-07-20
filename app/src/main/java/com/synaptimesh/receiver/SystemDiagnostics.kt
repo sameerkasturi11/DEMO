@@ -19,7 +19,40 @@ data class DiagnosticItem(
 class SystemDiagnostics(private val context: Context) {
 
     fun isAccessibilityEnabled(): Boolean {
-        return SynaptiMeshAccessibilityService.instance != null
+        // 1. Service Instance check
+        if (SynaptiMeshAccessibilityService.instance != null) {
+            return true
+        }
+
+        // 2. AccessibilityManager list check
+        try {
+            val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager
+            val enabledServices = am.getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+            for (enabledService in enabledServices) {
+                val enabledServiceInfo = enabledService.resolveInfo.serviceInfo
+                if (enabledServiceInfo.packageName == context.packageName && enabledServiceInfo.name == SynaptiMeshAccessibilityService::class.java.name) {
+                    return true
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // 3. Fallback direct settings check
+        try {
+            val settingValue = Settings.Secure.getString(
+                context.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            )
+            if (settingValue != null) {
+                return settingValue.contains(context.packageName + "/" + SynaptiMeshAccessibilityService::class.java.name) || 
+                       settingValue.contains(context.packageName + "/.SynaptiMeshAccessibilityService")
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        
+        return false
     }
 
     fun isJioSaavnInstalled(): Boolean {

@@ -664,20 +664,6 @@ class MainActivity : AppCompatActivity() {
         discoveryListener = null
     }
 
-    private fun isNotificationServiceEnabled(): Boolean {
-        val pkgName = packageName
-        val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
-        if (!flat.isNullOrEmpty()) {
-            val names = flat.split(":")
-            for (name in names) {
-                val cn = ComponentName.unflattenFromString(name)
-                if (cn != null && cn.packageName == pkgName) {
-                    return true
-                }
-            }
-        }
-        return false
-    }
 
 
 
@@ -714,6 +700,13 @@ class MainActivity : AppCompatActivity() {
     private fun refreshDashboard() {
         runOnUiThread {
             diagnosticAdapter.updateItems(systemDiagnostics.runDiagnostics(currentMqttState))
+            
+            txtSysInfo.text = """
+                Version : v${BuildConfig.VERSION_NAME}
+                Protocol : 2
+                Broker : MQTT
+                Automation : ${if (currentMqttState == "Connected") "Ready" else "Disconnected"}
+            """.trimIndent()
         }
     }
 }
