@@ -9,6 +9,11 @@ import android.os.Bundle
 import android.view.accessibility.AccessibilityNodeInfo
 import org.json.JSONObject
 import kotlinx.coroutines.delay
+import android.graphics.Rect
+import android.graphics.Path
+import android.accessibilityservice.GestureDescription
+import kotlin.coroutines.resume
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 object ScriptStore {
     val searchPlaylist = """
@@ -63,18 +68,27 @@ object ScriptStore {
           "on_failure": "abort"
         },
         {
-          "action": "click",
-          "target_desc": "Play",
-          "fallback_target": "Shuffle",
-          "fallback_id": "fab_play",
+          "action": "click_first_song",
           "timeout": 5000,
-          "retry": 1,
-          "on_failure": "abort"
+          "on_failure": "continue"
         },
         {
           "action": "verify_media",
           "state": "PLAYING",
-          "timeout": 5000,
+          "timeout": 4000,
+          "retry": 0,
+          "on_failure": "continue"
+        },
+        {
+          "action": "media_play",
+          "timeout": 2000,
+          "retry": 0,
+          "on_failure": "continue"
+        },
+        {
+          "action": "verify_media",
+          "state": "PLAYING",
+          "timeout": 4000,
           "retry": 0,
           "on_failure": "abort"
         }
@@ -147,17 +161,19 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
         return baseMatch && classMatch && editableMatch
     }
     
-    private fun dumpTree(node: AccessibilityNodeInfo?, prefix: String = "") {
+    private fun dumpTree(node: AccessibilityNodeInfo?, prefix: String = "", dumpLogs: MutableList<String>? = null) {
         if (node == null) return
         val t = node.text?.toString() ?: ""
         val c = node.contentDescription?.toString() ?: ""
         val h = if (android.os.Build.VERSION.SDK_INT >= 26) node.hintText?.toString() ?: "" else ""
         
         if (t.isNotEmpty() || c.isNotEmpty() || h.isNotEmpty()) {
-            MainActivity.appendLog("[DUMP] $prefix class=${node.className} text='$t' desc='$c' hint='$h'")
+            val msg = "[DUMP] $prefix class=${node.className} text='$t' desc='$c' hint='$h'"
+            MainActivity.appendLog(msg)
+            dumpLogs?.add("  -> $msg")
         }
         for (i in 0 until node.childCount) {
-            dumpTree(node.getChild(i), "$prefix  ")
+            dumpTree(node.getChild(i), "$prefix  ", dumpLogs)
         }
     }
 
@@ -174,22 +190,69 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
         return null
     }
 
-    private fun clickNode(node: AccessibilityNodeInfo): Boolean {
+    private suspend fun clickNode(node: AccessibilityNodeInfo): Boolean {
         var current: AccessibilityNodeInfo? = node
-        var depth = 0
         while (current != null) {
             if (current.isClickable) {
-                if (depth > 0) {
-                    val pClass = current.className?.toString() ?: "null"
-                    val pId = current.viewIdResourceName ?: "null"
-                    MainActivity.appendLog("[AUTO] Original node not clickable. Walked up $depth levels and clicked parent [class=$pClass, id=$pId]")
+                if (current.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                    MainActivity.appendLog("[AUTO] Successfully executed ACTION_CLICK")
+                    return true
                 }
-                return current.performAction(AccessibilityNodeInfo.ACTION_CLICK)
             }
             current = current.parent
-            depth++
         }
-        return false
+        
+        // 3: Fallback to Gesture Tap
+        MainActivity.appendLog("[AUTO] ACTION_CLICK failed or node/parents not clickable. Falling back to Gesture Tap...")
+        val rect = Rect()
+        node.getBoundsInScreen(rect)
+        
+        val path = Path()
+        path.moveTo(rect.centerX().toFloat(), rect.centerY().toFloat())
+        val gesture = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(path, 0, 50))
+            .build()
+            
+        return suspendCancellableCoroutine { cont ->
+            val result = service.dispatchGesture(gesture, object : AccessibilityService.GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    MainActivity.appendLog("[AUTO] Gesture Tap SUCCESS on [bounds=$rect]")
+                    cont.resume(true)
+                }
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    MainActivity.appendLog("[AUTO] Gesture Tap CANCELLED on [bounds=$rect]")
+                    cont.resume(false)
+                }
+            }, null)
+            
+            if (!result) {
+                MainActivity.appendLog("[AUTO] Failed to dispatch Gesture Tap.")
+                cont.resume(false)
+            }
+        }
+    }
+
+    private suspend fun dispatchGestureTap(x: Float, y: Float): Boolean {
+        val path = Path()
+        path.moveTo(x, y)
+        val gesture = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(path, 0, 50))
+            .build()
+            
+        return suspendCancellableCoroutine { cont ->
+            val result = service.dispatchGesture(gesture, object : AccessibilityService.GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    cont.resume(true)
+                }
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    cont.resume(false)
+                }
+            }, null)
+            
+            if (!result) {
+                cont.resume(false)
+            }
+        }
     }
 
     suspend fun execute(scriptJson: String, request: CommandRequest, queueDelayMs: Long) {
@@ -201,6 +264,11 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
             stepLogs.add(msg)
             MainActivity.appendLog("[AUTO] $msg")
             EventBus.emit(AutomationEvent.Progress(request.command, msg))
+        }
+
+        fun logDetail(msg: String) {
+            stepLogs.add("  -> $msg")
+            MainActivity.appendLog("[AUTO] $msg")
         }
 
         try {
@@ -295,15 +363,15 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
                                     success = clicked
                                     
                                     if (clicked) {
-                                        MainActivity.appendLog("[AUTO] Clicked node [text=$nText, desc=$nDesc, class=$nClass, id=$nId]")
+                                        logDetail("Clicked node [text=$nText, desc=$nDesc, class=$nClass, id=$nId]")
                                     } else {
                                         errorMsg = "Node found but NOT clickable [text=$nText, desc=$nDesc, class=$nClass, id=$nId]"
-                                        MainActivity.appendLog("[AUTO] $errorMsg")
+                                        logDetail(errorMsg)
                                     }
                                 } else {
                                     errorMsg = "Node not found for targets [target=$target, target_desc=$targetDesc, id=$targetId, fallbacks=...]"
-                                    MainActivity.appendLog("[AUTO] Dumping tree because click failed:")
-                                    dumpTree(service.rootInActiveWindow)
+                                    logDetail("Dumping tree because click failed:")
+                                    dumpTree(service.rootInActiveWindow, "", stepLogs)
                                 }
                             }
                             "focus" -> {
@@ -322,7 +390,7 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
                                 } else {
                                     errorMsg = "Node not found for focus targets [${target}, ${targetId}, ${fallbackTarget}, ${fallbackId}, class=${targetClass}]"
                                     MainActivity.appendLog("[AUTO] Dumping tree because focus failed:")
-                                    dumpTree(service.rootInActiveWindow)
+                                    dumpTree(service.rootInActiveWindow, "", stepLogs)
                                 }
                             }
                             "set_text" -> {
@@ -407,7 +475,129 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
                                     }
                                     delay(200)
                                 }
-                                if (!success) errorMsg = "Media state did not become ${state}"
+                                if (!success) {
+                                    errorMsg = "Media state did not become ${state}"
+                                    logDetail(errorMsg)
+                                }
+                            }
+                            "media_play" -> {
+                                val engine = MediaEngine(service)
+                                logDetail("Executing media_play fallback...")
+                                val result = engine.play()
+                                logDetail("Media Play Result: $result")
+                                success = true
+                            }
+                            "click_first_song" -> {
+                                var rootNode = service.rootInActiveWindow
+                                var foundRow: AccessibilityNodeInfo? = null
+                                
+                                fun attemptFindRow(): AccessibilityNodeInfo? {
+                                    if (rootNode == null) return null
+                                    
+                                    val containers = mutableListOf<AccessibilityNodeInfo>()
+                                    fun findContainers(n: AccessibilityNodeInfo) {
+                                        if (n.isScrollable || n.className?.toString()?.contains("RecyclerView") == true || n.className?.toString()?.contains("ListView") == true) {
+                                            containers.add(n)
+                                        }
+                                        for (i in 0 until n.childCount) {
+                                            n.getChild(i)?.let { findContainers(it) }
+                                        }
+                                    }
+                                    findContainers(rootNode!!)
+                                    
+                                    logDetail("Found ${containers.size} scrollable/list containers")
+                                    
+                                    for (container in containers) {
+                                        for (j in 0 until container.childCount) {
+                                            val row = container.getChild(j) ?: continue
+                                            
+                                            val texts = mutableListOf<String>()
+                                            fun collectTexts(n: AccessibilityNodeInfo) {
+                                                val t = n.text?.toString()?.trim() ?: ""
+                                                val desc = n.contentDescription?.toString()?.trim() ?: ""
+                                                if (t.isNotEmpty() && t.length > 1) texts.add(t)
+                                                if (desc.isNotEmpty() && desc.length > 1) texts.add(desc)
+                                                
+                                                for (k in 0 until n.childCount) {
+                                                    n.getChild(k)?.let { collectTexts(it) }
+                                                }
+                                            }
+                                            collectTexts(row)
+                                            
+                                            val isInvalidRow = texts.any {
+                                                val lower = it.lowercase()
+                                                lower.contains("play") || lower.contains("jiotune") || 
+                                                lower.contains("favorite") || (lower.contains("song") && texts.size == 1)
+                                            }
+                                            
+                                            if (!isInvalidRow && texts.size >= 2) {
+                                                logDetail("Found valid row. Texts: $texts")
+                                                return row
+                                            }
+                                        }
+                                    }
+                                    return null
+                                }
+                                
+                                foundRow = attemptFindRow()
+                                
+                                if (foundRow == null && rootNode != null) {
+                                    logDetail("No song rows found. Attempting scroll...")
+                                    val scrollable = searchNode(rootNode!!) { it.isScrollable }
+                                    if (scrollable != null) {
+                                        scrollable.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+                                        kotlinx.coroutines.delay(1000)
+                                        rootNode = service.rootInActiveWindow
+                                        foundRow = attemptFindRow()
+                                    } else {
+                                        logDetail("No scrollable node found to scroll.")
+                                    }
+                                }
+                                
+                                if (foundRow != null) {
+                                    success = clickNode(foundRow!!)
+                                    if (success) {
+                                        logDetail("Clicked song row container SUCCESS")
+                                    }
+                                } else {
+                                    logDetail("Accessibility failed to find song rows. Attempting Gesture Fallback...")
+                                    val referenceNode = searchNode(service.rootInActiveWindow ?: rootNode!!) { node ->
+                                        val text = node.text?.toString() ?: ""
+                                        text.contains("Songs", ignoreCase = true) || 
+                                        text.contains("Fans", ignoreCase = true) ||
+                                        text.contains("Let's Play", ignoreCase = true)
+                                    }
+                                    
+                                    val displayMetrics = service.resources.displayMetrics
+                                    var clickX = displayMetrics.widthPixels / 2f
+                                    var clickY = displayMetrics.heightPixels * 0.65f // 65% down as fallback
+                                    
+                                    if (referenceNode != null) {
+                                        val rect = android.graphics.Rect()
+                                        referenceNode.getBoundsInScreen(rect)
+                                        logDetail("Found reference node '${referenceNode.text}' at $rect")
+                                        clickX = rect.centerX().toFloat()
+                                        // The first track is usually just below the subtitle/stats line
+                                        clickY = rect.bottom + (displayMetrics.density * 60) // roughly 60dp below
+                                    } else {
+                                        logDetail("No reference node found. Using blind gesture fallback at 65% screen height.")
+                                    }
+                                    
+                                    logDetail("Dispatching gesture tap at X=$clickX, Y=$clickY")
+                                    val gestureSuccess = dispatchGestureTap(clickX, clickY)
+                                    if (gestureSuccess) {
+                                        logDetail("Dispatched gesture tap SUCCESS")
+                                        success = true
+                                    } else {
+                                        logDetail("Failed to dispatch gesture tap")
+                                    }
+                                }
+                                
+                                if (!success) {
+                                    errorMsg = "Failed to find or click first valid song row container"
+                                    dumpTree(service.rootInActiveWindow, "  -> TREE DUMP: ", stepLogs)
+                                    logDetail(errorMsg)
+                                }
                             }
                             "global_back" -> {
                                 success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
@@ -463,7 +653,8 @@ class GenericAutomationEngine(private val service: SynaptiMeshAccessibilityServi
                     logStep(i, action, "FAILED", errorMsg)
                     if (onFailure == "abort") {
                         val isRetryable = errorMsg.contains("Node not found") || errorMsg.contains("Timeout")
-                        throw Exception(if (isRetryable) "RETRYABLE: STEP ${i+1} (${action}) Failed: ${errorMsg}" else "NON_RETRYABLE: STEP ${i+1} (${action}) Failed: ${errorMsg}")
+                        val fullLog = stepLogs.joinToString("\n")
+                        throw Exception(if (isRetryable) "RETRYABLE: STEP ${i+1} (${action}) Failed: ${errorMsg}\n\n=== EXECUTION LOGS ===\n$fullLog" else "NON_RETRYABLE: STEP ${i+1} (${action}) Failed: ${errorMsg}\n\n=== EXECUTION LOGS ===\n$fullLog")
                     }
                 }
             }

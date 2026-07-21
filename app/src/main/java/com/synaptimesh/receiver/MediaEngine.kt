@@ -98,4 +98,45 @@ class MediaEngine(private val context: Context) {
         }
         return false
     }
+
+    fun play(): String {
+        var executionResult = ""
+        var resolvedSession = false
+        
+        try {
+            val componentName = ComponentName(context, MyNotificationListener::class.java)
+            val activeSessions = mediaSessionManager.getActiveSessions(componentName)
+            if (!activeSessions.isNullOrEmpty()) {
+                val controller = activeSessions.find { 
+                    it.packageName.contains("jiosaavn") 
+                } ?: activeSessions[0]
+                
+                controller.transportControls.play()
+                executionResult = "MediaController.transportControls.play() SENT"
+                resolvedSession = true
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        
+        if (!resolvedSession) {
+            val keyCode = KeyEvent.KEYCODE_MEDIA_PLAY
+            val eventTime = SystemClock.uptimeMillis()
+            
+            val downIntent = Intent(Intent.ACTION_MEDIA_BUTTON).apply {
+                putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, keyCode, 0))
+            }
+            val upIntent = Intent(Intent.ACTION_MEDIA_BUTTON).apply {
+                putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, keyCode, 0))
+            }
+            context.sendOrderedBroadcast(downIntent, null)
+            context.sendOrderedBroadcast(upIntent, null)
+
+            audioManager.dispatchMediaKeyEvent(KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, keyCode, 0))
+            audioManager.dispatchMediaKeyEvent(KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, keyCode, 0))
+            executionResult = "KEYCODE_MEDIA_PLAY SENT"
+        }
+        
+        return executionResult
+    }
 }

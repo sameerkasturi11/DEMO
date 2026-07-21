@@ -173,7 +173,7 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 txtLogs.text = "[NSD] Auto-discovery timeout, using fallback\n" + txtLogs.text
             }
-            connectMQTT("172.18.9.82", 8883)
+            connectMQTT("172.18.9.82", 1884)
         }
     }
 
@@ -298,7 +298,7 @@ class MainActivity : AppCompatActivity() {
                     refreshDashboard()
                 }
 
-                val brokerUri = "ssl://$ip:$port"
+                val brokerUri = "tcp://$ip:$port"
                 val clientId = MqttClient.generateClientId()
                 mqttClient = MqttClient(brokerUri, clientId, MemoryPersistence())
                 activeMqttClient = mqttClient
@@ -309,7 +309,7 @@ class MainActivity : AppCompatActivity() {
                 options.isAutomaticReconnect = true
                 options.userName = "synaptimesh"
                 options.password = "SynaptiMesh2026!".toCharArray()
-                options.socketFactory = getSSLSocketFactory()
+                // options.socketFactory = getSSLSocketFactory()
 
                 mqttClient?.setCallback(object : MqttCallbackExtended {
                     override fun connectComplete(reconnect: Boolean, serverURI: String?) {
@@ -575,7 +575,7 @@ class MainActivity : AppCompatActivity() {
                     txtLogs.text = "[NSD] Discovery Start Failed: $errorCode\n" + txtLogs.text
                 }
                 handler.removeCallbacks(timeoutRunnable)
-                connectMQTT("172.18.9.82", 8883)
+                connectMQTT("172.18.9.82", 1884)
             }
 
             override fun onStopDiscoveryFailed(serviceType: String?, errorCode: Int) {
@@ -611,7 +611,7 @@ class MainActivity : AppCompatActivity() {
                             stopDiscovery()
 
                             val host = serviceInfo?.host?.hostAddress
-                            val port = serviceInfo?.port ?: 8883
+                            val port = serviceInfo?.port ?: 1884
                             if (host != null) {
                                 runOnUiThread {
                                     txtLogs.text = "[NSD] Discovered Broker: tcp://$host:$port\n" + txtLogs.text

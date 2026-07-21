@@ -21,7 +21,7 @@ def get_local_ip():
     return ip
 
 BROKER_IP = get_local_ip()
-BROKER_PORT = 8883
+BROKER_PORT = 1884
 COMMAND_TOPIC = "synaptimesh/commands"
 ACK_TOPIC = "synaptimesh/ack"
 TIMEOUT_SEC = 25.0
@@ -48,10 +48,10 @@ def on_message(client, userdata, msg):
 
 client = mqtt.Client(client_id=f"Demo_{uuid.uuid4().hex[:8]}")
 client.username_pw_set("synaptimesh", "SynaptiMesh2026!")
-client.tls_set(ca_certs=os.path.join(BASE_DIR, "certs", "ca.crt"), 
-               certfile=os.path.join(BASE_DIR, "certs", "python_client.crt"), 
-               keyfile=os.path.join(BASE_DIR, "certs", "python_client.key"), 
-               tls_version=ssl.PROTOCOL_TLSv1_2)
+# client.tls_set(ca_certs=os.path.join(BASE_DIR, "ca.crt"),
+#               certfile=os.path.join(BASE_DIR, "server.crt"),
+#               keyfile=os.path.join(BASE_DIR, "server.key"),
+#               tls_version=ssl.PROTOCOL_TLSv1_2)
 client.on_message = on_message
 client.connect(BROKER_IP, BROKER_PORT, 60)
 client.subscribe(ACK_TOPIC, qos=1)
