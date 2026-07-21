@@ -13,7 +13,7 @@ EEG Command
 Python MQTT Publisher
       │
       ▼
-Mosquitto Broker
+Mosquitto MQTT Broker
       │
       ▼
 Android MQTT Receiver
@@ -22,7 +22,8 @@ Android MQTT Receiver
 Receive RIGHT_SEARCH_ALBUM_PLAYLIST
       │
       ▼
-Launch JioSaavn (if not already running)
+Launch JioSaavn
+(if not already running)
       │
       ▼
 Open Search
@@ -31,28 +32,67 @@ Open Search
 Focus Search Box
       │
       ▼
-Enter: "Let's Play - Anirudh Ravichander - Telugu"
+Enter Search Query
+"Let's Play - Anirudh Ravichander - Telugu"
       │
       ▼
 Wait for Search Results
       │
       ▼
-Click: "Let's Play - Anirudh Ravichander - Telugu"
+Select Playlist
+"Let's Play - Anirudh Ravichander - Telugu"
       │
       ▼
 Wait Until Playlist Page Loads
       │
       ▼
-Find Play Button / Song Row
+Search Accessibility Tree
+for Valid Song Rows
       │
       ▼
-Click Play Target (with Gesture Fallbacks)
+Valid Song Found?
+      │
+ ┌────┴────┐
+ │         │
+Yes        No
+ │         │
+ ▼         ▼
+Click     Perform
+Song Row  ACTION_SCROLL_FORWARD
+ │         │
+ ▼         ▼
+Verify    Refresh Accessibility Tree
+ │         │
+ └────┬────┘
+      ▼
+Song Found?
+      │
+ ┌────┴────┐
+ │         │
+Yes        No
+ │         │
+ ▼         ▼
+Click     Find Anchor
+Song Row  ("Let's Play", "Songs", "Fans")
+ │         │
+ ▼         ▼
+Verify    Calculate Gesture Coordinates
+ │         │
+ └────┬────┘
+      ▼
+Execute dispatchGesture()
       │
       ▼
-Verify Playback Started
+Verify Playback
+(MediaController)
       │
-      ▼
-Send ACK = SUCCESS
+ ┌────┴────┐
+ │         │
+Success   Failed
+ │         │
+ ▼         ▼
+Send ACK  Send Failure ACK
+SUCCESS   + Error Reason
       │
       ▼
 Release Command Queue
