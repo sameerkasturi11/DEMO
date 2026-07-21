@@ -30,8 +30,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 running = True
 sent_messages = {}
+abort_sequence = False
 
 def on_message(client, userdata, msg):
+    global abort_sequence
     if msg.topic == ACK_TOPIC:
         try:
             ack_data = json.loads(msg.payload.decode())
@@ -42,7 +44,10 @@ def on_message(client, userdata, msg):
                 print(f"\n[{datetime.now().strftime('%H:%M:%S')}] [ACK] Command {mid} completed with status: {status}")
                 if "reason" in ack_data:
                     print(f"       Reason: {ack_data['reason']}")
-                sent_messages.pop(mid, None)
+                if status == "FAILED":
+                    abort_sequence = True
+                if status in ["SUCCESS", "FAILED", "REJECTED"]:
+                    sent_messages.pop(mid, None)
         except:
             pass
 
@@ -108,12 +113,16 @@ for step in demo_sequence:
     client.publish(COMMAND_TOPIC, json.dumps(payload), qos=1)
     
     # Wait for ACK
-    while command_id in sent_messages:
+    while command_id in sent_messages and not abort_sequence:
         if time.time() - sent_messages[command_id]["sent_time"] > TIMEOUT_SEC:
             print(f"[!] TIMEOUT waiting for ACK for {command}")
             sent_messages.pop(command_id, None)
             break
         time.sleep(0.1)
+    
+    if abort_sequence:
+        print(f"\n[SYSTEM] Aborting sequence due to failure in {command}.")
+        break
         
     time.sleep(step["delay"])
     sequence_counter += 1
